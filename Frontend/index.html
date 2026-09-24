@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chat</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --panel-soft: #1f2937;
+        --primary: #8b5cf6;
+        --primary-dark: #7c3aed;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --user: #2563eb;
+        --bot: #374151;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #020817, #111827 30%, #1e1b4b);
+        font-family: Arial, Helvetica, sans-serif;
+        color: var(--text);
+      }
+
+      .chat-app {
+        width: min(900px, 92vw);
+        height: min(82vh, 760px);
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
+
+      .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(17, 24, 39, 0.8);
+      }
+
+      .chat-header h1 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .status {
+        font-size: 0.84rem;
+        color: var(--muted);
+      }
+
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px 18px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background: rgba(15, 23, 42, 0.75);
+      }
+
+      .message {
+        display: flex;
+      }
+
+      .message.user {
+        justify-content: flex-end;
+      }
+
+      .message.bot {
+        justify-content: flex-start;
+      }
+
+      .bubble {
+        max-width: 72%;
+        padding: 12px 14px;
+        border-radius: 16px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .message.user .bubble {
+        background: linear-gradient(135deg, var(--user), #3b82f6);
+        border-bottom-right-radius: 5px;
+      }
+
+      .message.bot .bubble {
+        background: var(--bot);
+        border: 1px solid var(--border);
+        border-bottom-left-radius: 5px;
+      }
+
+      .chat-form {
+        display: flex;
+        gap: 12px;
+        padding: 18px 20px 22px;
+        border-top: 1px solid var(--border);
+        background: rgba(17, 24, 39, 0.9);
+      }
+
+      .chat-input {
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(31, 41, 55, 0.8);
+        color: var(--text);
+        padding: 14px 16px;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      .chat-input:focus {
+        border-color: rgba(139, 92, 246, 0.9);
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+      }
+
+      .send-btn {
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        font-weight: 700;
+        padding: 0 20px;
+        min-width: 110px;
+        cursor: pointer;
+        transition: transform 0.15s ease, opacity 0.2s ease;
+      }
+
+      .send-btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .send-btn:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      @media (max-width: 640px) {
+        .bubble {
+          max-width: 85%;
+        }
+
+        .chat-form {
+          flex-direction: column;
+        }
+
+        .send-btn {
+          width: 100%;
+          height: 46px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-app">
+      <header class="chat-header">
+        <h1>AI Chat</h1>
+        <div class="status" id="status">Ready</div>
+      </header>
+
+      <main class="messages" id="messages" aria-live="polite"></main>
+
+      <form class="chat-form" id="chatForm">
+        <input
+          id="messageInput"
+          class="chat-input"
+          type="text"
+          placeholder="Type your message..."
+          autocomplete="off"
+        />
+        <button class="send-btn" id="sendBtn" type="submit">Send</button>
+      </form>
+    </div>
+
+    <script>
+      const messagesEl = document.getElementById('messages');
+      const form = document.getElementById('chatForm');
+      const input = document.getElementById('messageInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const statusEl = document.getElementById('status');
+
+      function renderMessage(role, text) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message ${role}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+
+        wrapper.appendChild(bubble);
+        messagesEl.appendChild(wrapper);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function setStatus(message) {
+        statusEl.textContent = message;
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const message = input.value.trim();
+        if (!message) return;
+
+        renderMessage('user', message);
+        input.value = '';
+        sendBtn.disabled = true;
+        setStatus('Thinking...');
+
+        try {
+          const response = await fetch('/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: 'frontend-user', msg: message }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.error || 'Request failed');
+          }
+
+          const answer = await response.text();
+          renderMessage('bot', answer);
+          setStatus('Ready');
+        } catch (error) {
+          renderMessage('bot', 'Sorry, something went wrong. Please try again.');
+          setStatus('Error');
+          console.error(error);
+        } finally {
+          sendBtn.disabled = false;
+          input.focus();
+        }
+      });
+    </script>
+  </body>
+</html>
